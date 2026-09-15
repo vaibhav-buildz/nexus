@@ -42,6 +42,21 @@ class Settings(BaseSettings):
     DB_POOL_TIMEOUT: int = 30
     DB_ECHO: bool = False
 
+    # Authentication & Security
+    JWT_SECRET_KEY: str = Field(
+        default="nexus-insecure-dev-secret-key-change-in-prod-minimum-32-chars",
+        description="Cryptographic secret key for signing JWT tokens",
+    )
+    JWT_ALGORITHM: str = Field(default="HS256", description="JWT signing algorithm")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=15, description="Access token lifetime in minutes")
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7, description="Refresh token lifetime in days")
+    EMAIL_VERIFICATION_EXPIRE_HOURS: int = Field(
+        default=24, description="Email verification token validity in hours"
+    )
+    EMAIL_SERVICE_PROVIDER: Literal["console", "mock"] = Field(
+        default="console", description="Email provider backend"
+    )
+
     @computed_field
     @property
     def async_database_url(self) -> str:

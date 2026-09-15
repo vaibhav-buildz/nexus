@@ -39,6 +39,82 @@ class DatabaseConnectionError(AppException):
         )
 
 
+class InvalidCredentialsError(AppException):
+    """Raised when email/password verification fails."""
+
+    def __init__(self, message: str = "Invalid email or password.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code="INVALID_CREDENTIALS",
+            details=details,
+        )
+
+
+class InvalidTokenError(AppException):
+    """Raised when an access or refresh token is invalid, expired, or revoked."""
+
+    def __init__(self, message: str = "Token is invalid or expired.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code="INVALID_TOKEN",
+            details=details,
+        )
+
+
+class TokenReuseDetectedError(AppException):
+    """Raised when a previously rotated or revoked refresh token is reused."""
+
+    def __init__(
+        self,
+        message: str = "Security alert: Refresh token reuse detected. All related sessions have been revoked.",
+        details: Any = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code="TOKEN_REUSE_DETECTED",
+            details=details,
+        )
+
+
+class InactiveUserError(AppException):
+    """Raised when an inactive/disabled user attempts an action."""
+
+    def __init__(self, message: str = "User account is inactive.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_403_FORBIDDEN,
+            code="USER_INACTIVE",
+            details=details,
+        )
+
+
+class UserAlreadyExistsError(AppException):
+    """Raised when registration email is already in use."""
+
+    def __init__(self, message: str = "A user with this email already exists.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_409_CONFLICT,
+            code="USER_ALREADY_EXISTS",
+            details=details,
+        )
+
+
+class EmailVerificationError(AppException):
+    """Raised when email verification token is invalid, expired, or already used."""
+
+    def __init__(self, message: str = "Invalid or expired email verification token.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="EMAIL_VERIFICATION_FAILED",
+            details=details,
+        )
+
+
 def create_error_response(status_code: int, code: str, message: str, details: Any = None) -> JSONResponse:
     """Helper to return consistent JSON error envelopes."""
     payload = {
@@ -93,16 +169,24 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+        clean_errors = [
+            {
+                "type": str(e.get("type", "")),
+                "loc": [str(x) for x in e.get("loc", [])],
+                "msg": str(e.get("msg", "")),
+            }
+            for e in exc.errors()
+        ]
         logger.warning(
             "Request validation error on %s",
             request.url.path,
-            extra={"path": request.url.path, "errors": exc.errors()},
+            extra={"path": request.url.path, "errors": clean_errors},
         )
         return create_error_response(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             code="VALIDATION_ERROR",
             message="Invalid request payload or parameters",
-            details=exc.errors(),
+            details=clean_errors,
         )
 
     @app.exception_handler(Exception)

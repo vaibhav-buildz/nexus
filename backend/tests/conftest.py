@@ -30,7 +30,25 @@ from app.db.session import get_db_session
 from app.main import create_application
 from app.services.email_service import MockEmailService, get_email_service
 
-TEST_PG_URL = "postgresql+asyncpg://nexus:nexus_secret@localhost:5432/nexus_test_db"
+import socket
+
+def _is_pg_running(host: str, port: int) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+if _is_pg_running("localhost", 5432):
+    TEST_PG_URL = os.environ.get(
+        "TEST_DATABASE_URL",
+        "postgresql+asyncpg://nexus:nexus_secret@localhost:5432/nexus_test_db",
+    )
+else:
+    TEST_PG_URL = os.environ.get(
+        "TEST_DATABASE_URL",
+        "sqlite+aiosqlite:///nexus_test.db",
+    )
 
 
 @pytest.fixture
@@ -41,20 +59,38 @@ def test_settings() -> Settings:
 
 @pytest_asyncio.fixture
 async def pg_engine() -> AsyncGenerator[AsyncEngine, None]:
-    """Create a per-test PostgreSQL async engine with NullPool to prevent event-loop conflicts on Windows."""
+    """Create a per-test database async engine with NullPool to prevent event-loop conflicts on Windows."""
     engine = create_async_engine(
         TEST_PG_URL,
         echo=False,
         future=True,
         poolclass=NullPool,
     )
+    if "sqlite" in str(engine.url):
+        from sqlalchemy import event
+
+        @event.listens_for(engine.sync_engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     yield engine
 
     async with engine.begin() as conn:
-        await conn.execute(text("TRUNCATE TABLE email_verification_tokens, sessions, users CASCADE;"))
+        if "sqlite" in str(engine.url):
+            for table in reversed(Base.metadata.sorted_tables):
+                await conn.execute(table.delete())
+        else:
+            await conn.execute(
+                text(
+                    "TRUNCATE TABLE organization_members, organizations, "
+                    "email_verification_tokens, sessions, users CASCADE;"
+                )
+            )
     await engine.dispose()
 
 

@@ -14,13 +14,7 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
-class OrgRole(str, Enum):
-    """Controlled application-level organization membership roles."""
-
-    OWNER = "OWNER"
-    ADMIN = "ADMIN"
-    MEMBER = "MEMBER"
-    VIEWER = "VIEWER"
+from app.core.rbac import OrgRole
 
 
 class OrganizationMember(Base):

@@ -115,6 +115,66 @@ class EmailVerificationError(AppException):
         )
 
 
+class OrganizationNotFoundError(AppException):
+    """Raised when an organization is not found by ID or slug."""
+
+    def __init__(self, message: str = "Organization not found.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="ORGANIZATION_NOT_FOUND",
+            details=details,
+        )
+
+
+class InactiveOrganizationError(AppException):
+    """Raised when an action is attempted on an inactive organization."""
+
+    def __init__(self, message: str = "Organization is inactive.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_403_FORBIDDEN,
+            code="ORGANIZATION_INACTIVE",
+            details=details,
+        )
+
+
+class NotAnOrganizationMemberError(AppException):
+    """Raised when a user is not a member of the target organization."""
+
+    def __init__(self, message: str = "Not a member of this organization.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_403_FORBIDDEN,
+            code="NOT_AN_ORG_MEMBER",
+            details=details,
+        )
+
+
+class InsufficientPermissionsError(AppException):
+    """Raised when an actor lacks the required RBAC permission."""
+
+    def __init__(self, message: str = "Insufficient permissions.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_403_FORBIDDEN,
+            code="INSUFFICIENT_PERMISSIONS",
+            details=details,
+        )
+
+
+class GovernanceRuleViolationError(AppException):
+    """Raised when an operation violates organization governance/RBAC policy."""
+
+    def __init__(self, message: str = "Insufficient permissions.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_403_FORBIDDEN,
+            code="GOVERNANCE_RULE_VIOLATION",
+            details=details,
+        )
+
+
 def create_error_response(status_code: int, code: str, message: str, details: Any = None) -> JSONResponse:
     """Helper to return consistent JSON error envelopes."""
     payload = {

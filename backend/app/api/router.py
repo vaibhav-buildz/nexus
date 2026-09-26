@@ -1,7 +1,7 @@
 """Main API router combining sub-routers."""
 
 from fastapi import APIRouter
-from app.api.routes import auth, health
+from app.api.routes import auth, health, organizations
 
 api_router = APIRouter()
 
@@ -10,3 +10,6 @@ api_router.include_router(health.router)
 
 # Mount authentication routes
 api_router.include_router(auth.router, prefix="/api/v1/auth")
+
+# Mount organization routes
+api_router.include_router(organizations.router, prefix="/api/v1/organizations")

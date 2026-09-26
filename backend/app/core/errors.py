@@ -127,6 +127,18 @@ class OrganizationNotFoundError(AppException):
         )
 
 
+class OrganizationAlreadyExistsError(AppException):
+    """Raised when an organization with the same slug already exists."""
+
+    def __init__(self, message: str = "An organization with this slug already exists.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_409_CONFLICT,
+            code="ORGANIZATION_ALREADY_EXISTS",
+            details=details,
+        )
+
+
 class InactiveOrganizationError(AppException):
     """Raised when an action is attempted on an inactive organization."""
 

@@ -522,3 +522,169 @@ async def test_inactive_and_nonexistent_users(
     )
     assert res_del_nonexistent.status_code == 404
     assert res_del_nonexistent.json()["error"]["code"] == "MEMBER_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_member_cannot_invite(
+    client: AsyncClient,
+    test_db_session: AsyncSession,
+) -> None:
+    """Verify that VIEWER and MEMBER roles cannot invite/add new members (requires member:invite)."""
+    owner = await _create_user(test_db_session)
+    regular_member = await _create_user(test_db_session, "member@corp.internal")
+    viewer = await _create_user(test_db_session, "viewer@corp.internal")
+    new_user = await _create_user(test_db_session, "new@corp.internal")
+    org = await _create_org_with_owner(test_db_session, owner)
+
+    # Add member and viewer
+    await client.post(
+        f"/api/v1/organizations/{org.id}/members",
+        json={"user_id": str(regular_member.id), "role": OrgRole.MEMBER.value},
+        headers=_auth_header(owner),
+    )
+    await client.post(
+        f"/api/v1/organizations/{org.id}/members",
+        json={"user_id": str(viewer.id), "role": OrgRole.VIEWER.value},
+        headers=_auth_header(owner),
+    )
+
+    # 1. MEMBER attempts to add user -> 403
+    res_m = await client.post(
+        f"/api/v1/organizations/{org.id}/members",
+        json={"user_id": str(new_user.id), "role": OrgRole.MEMBER.value},
+        headers=_auth_header(regular_member),
+    )
+    assert res_m.status_code == 403
+    assert res_m.json()["error"]["code"] == "INSUFFICIENT_PERMISSIONS"
+
+    # 2. VIEWER attempts to add user -> 403
+    res_v = await client.post(
+        f"/api/v1/organizations/{org.id}/members",
+        json={"user_id": str(new_user.id), "role": OrgRole.MEMBER.value},
+        headers=_auth_header(viewer),
+    )
+    assert res_v.status_code == 403
+    assert res_v.json()["error"]["code"] == "INSUFFICIENT_PERMISSIONS"
+
+
+@pytest.mark.asyncio
+async def test_member_operations_on_inactive_organization(
+    client: AsyncClient,
+    test_db_session: AsyncSession,
+) -> None:
+    """Verify that all member operations return 403 when the organization is inactive."""
+    owner = await _create_user(test_db_session)
+    member = await _create_user(test_db_session)
+    org = await _create_org_with_owner(test_db_session, owner)
+
+    # Add member while active
+    await client.post(
+        f"/api/v1/organizations/{org.id}/members",
+        json={"user_id": str(member.id), "role": OrgRole.MEMBER.value},
+        headers=_auth_header(owner),
+    )
+
+    # Deactivate organization
+    del_res = await client.delete(
+        f"/api/v1/organizations/{org.id}",
+        headers=_auth_header(owner),
+    )
+    assert del_res.status_code == 200
+
+    # 1. GET /members -> 403 ORGANIZATION_INACTIVE
+    res_list = await client.get(
+        f"/api/v1/organizations/{org.id}/members",
+        headers=_auth_header(owner),
+    )
+    assert res_list.status_code == 403
+    assert res_list.json()["error"]["code"] == "ORGANIZATION_INACTIVE"
+
+    # 2. POST /members -> 403 ORGANIZATION_INACTIVE
+    another_user = await _create_user(test_db_session)
+    await test_db_session.commit()
+    res_post = await client.post(
+        f"/api/v1/organizations/{org.id}/members",
+        json={"user_id": str(another_user.id), "role": OrgRole.MEMBER.value},
+        headers=_auth_header(owner),
+    )
+    assert res_post.status_code == 403
+    assert res_post.json()["error"]["code"] == "ORGANIZATION_INACTIVE"
+
+    # 3. PATCH /members/{id} -> 403 ORGANIZATION_INACTIVE
+    res_patch = await client.patch(
+        f"/api/v1/organizations/{org.id}/members/{member.id}",
+        json={"role": OrgRole.ADMIN.value},
+        headers=_auth_header(owner),
+    )
+    assert res_patch.status_code == 403
+    assert res_patch.json()["error"]["code"] == "ORGANIZATION_INACTIVE"
+
+    # 4. DELETE /members/{id} -> 403 ORGANIZATION_INACTIVE
+    res_del = await client.delete(
+        f"/api/v1/organizations/{org.id}/members/{member.id}",
+        headers=_auth_header(owner),
+    )
+    assert res_del.status_code == 403
+    assert res_del.json()["error"]["code"] == "ORGANIZATION_INACTIVE"
+
+
+@pytest.mark.asyncio
+async def test_add_member_with_both_user_id_and_email(
+    client: AsyncClient,
+    test_db_session: AsyncSession,
+) -> None:
+    """Verify adding member with both matching user_id and email succeeds, but mismatched fails."""
+    owner = await _create_user(test_db_session)
+    user_a = await _create_user(test_db_session, "user_a@nexus.internal")
+    user_b = await _create_user(test_db_session, "user_b@nexus.internal")
+    org = await _create_org_with_owner(test_db_session, owner)
+
+    # Matching user_id and email -> 201
+    res_match = await client.post(
+        f"/api/v1/organizations/{org.id}/members",
+        json={"user_id": str(user_a.id), "email": user_a.email, "role": OrgRole.MEMBER.value},
+        headers=_auth_header(owner),
+    )
+    assert res_match.status_code == 201
+    assert res_match.json()["user_id"] == str(user_a.id)
+
+    # Mismatched user_id and email -> 404 USER_NOT_FOUND
+    res_mismatch = await client.post(
+        f"/api/v1/organizations/{org.id}/members",
+        json={"user_id": str(user_b.id), "email": "wrong_email@nexus.internal", "role": OrgRole.MEMBER.value},
+        headers=_auth_header(owner),
+    )
+    assert res_mismatch.status_code == 404
+    assert res_mismatch.json()["error"]["code"] == "USER_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+async def test_member_endpoints_unauthenticated(
+    client: AsyncClient,
+) -> None:
+    """Verify that unauthenticated requests to member endpoints return 401."""
+    dummy_org = uuid.uuid4()
+    dummy_user = uuid.uuid4()
+
+    # GET /members
+    res_get = await client.get(f"/api/v1/organizations/{dummy_org}/members")
+    assert res_get.status_code == 401
+
+    # POST /members
+    res_post = await client.post(
+        f"/api/v1/organizations/{dummy_org}/members",
+        json={"email": "test@test.com", "role": "MEMBER"},
+    )
+    assert res_post.status_code == 401
+
+    # PATCH /members/{user_id}
+    res_patch = await client.patch(
+        f"/api/v1/organizations/{dummy_org}/members/{dummy_user}",
+        json={"role": "ADMIN"},
+    )
+    assert res_patch.status_code == 401
+
+    # DELETE /members/{user_id}
+    res_del = await client.delete(f"/api/v1/organizations/{dummy_org}/members/{dummy_user}")
+    assert res_del.status_code == 401
+

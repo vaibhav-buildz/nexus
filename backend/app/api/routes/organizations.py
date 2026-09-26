@@ -7,11 +7,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_verified_user
 from app.db.session import get_db_session
 from app.models.user import User
+from app.schemas.auth import MessageResponse
+from app.schemas.member import (
+    MemberAddRequest,
+    MemberResponse,
+    MemberRoleUpdateRequest,
+)
 from app.schemas.organization import (
     OrganizationCreateRequest,
     OrganizationResponse,
     OrganizationUpdateRequest,
 )
+from app.services.membership_service import MembershipService
 from app.services.organization_service import OrganizationService
 
 router = APIRouter(tags=["Organizations"])
@@ -121,3 +128,93 @@ async def delete_organization(
         org_id=org_id,
     )
     return OrganizationResponse.model_validate(org)
+
+
+# =========================================================================
+# Membership Management Endpoints
+# =========================================================================
+
+
+@router.get(
+    "/{org_id}/members",
+    status_code=status.HTTP_200_OK,
+    response_model=list[MemberResponse],
+    summary="List organization members",
+)
+async def list_members(
+    org_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_verified_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> list[MemberResponse]:
+    """Return all members belonging strictly to the requested organization context (requires member:read)."""
+    return await MembershipService.list_members(
+        db=db,
+        current_user=current_user,
+        org_id=org_id,
+    )
+
+
+@router.post(
+    "/{org_id}/members",
+    status_code=status.HTTP_201_CREATED,
+    response_model=MemberResponse,
+    summary="Add an existing user to the organization",
+)
+async def add_member(
+    org_id: uuid.UUID,
+    payload: MemberAddRequest,
+    current_user: Annotated[User, Depends(get_current_verified_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> MemberResponse:
+    """Add a registered user to the organization with assigned role (requires member:invite)."""
+    return await MembershipService.add_member(
+        db=db,
+        current_user=current_user,
+        org_id=org_id,
+        payload=payload,
+    )
+
+
+@router.patch(
+    "/{org_id}/members/{user_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=MemberResponse,
+    summary="Update a member's role",
+)
+async def update_member_role(
+    org_id: uuid.UUID,
+    user_id: uuid.UUID,
+    payload: MemberRoleUpdateRequest,
+    current_user: Annotated[User, Depends(get_current_verified_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> MemberResponse:
+    """Update a member's assigned role with explicit RBAC governance checks (requires member:role_update)."""
+    return await MembershipService.update_member_role(
+        db=db,
+        current_user=current_user,
+        org_id=org_id,
+        target_user_id=user_id,
+        new_role=payload.role,
+    )
+
+
+@router.delete(
+    "/{org_id}/members/{user_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+    summary="Remove a member or self-leave from organization",
+)
+async def remove_member(
+    org_id: uuid.UUID,
+    user_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_verified_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> MessageResponse:
+    """Remove a member or self-leave, enforcing sole-owner protection (requires member:remove)."""
+    await MembershipService.remove_member(
+        db=db,
+        current_user=current_user,
+        org_id=org_id,
+        target_user_id=user_id,
+    )
+    return MessageResponse(message="Member removed from organization successfully.")

@@ -163,6 +163,42 @@ class NotAnOrganizationMemberError(AppException):
         )
 
 
+class MemberAlreadyExistsError(AppException):
+    """Raised when a user is already a member of the organization."""
+
+    def __init__(self, message: str = "User is already a member of this organization.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_409_CONFLICT,
+            code="MEMBER_ALREADY_EXISTS",
+            details=details,
+        )
+
+
+class MemberNotFoundError(AppException):
+    """Raised when a member is not found in the organization."""
+
+    def __init__(self, message: str = "Member not found in this organization.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="MEMBER_NOT_FOUND",
+            details=details,
+        )
+
+
+class UserNotFoundError(AppException):
+    """Raised when a specified user does not exist."""
+
+    def __init__(self, message: str = "User not found.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="USER_NOT_FOUND",
+            details=details,
+        )
+
+
 class InsufficientPermissionsError(AppException):
     """Raised when an actor lacks the required RBAC permission."""
 

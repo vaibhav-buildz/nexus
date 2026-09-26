@@ -10,6 +10,11 @@ from app.schemas.auth import (
     UserResponse,
     VerifyEmailRequest,
 )
+from app.schemas.member import (
+    MemberAddRequest,
+    MemberResponse,
+    MemberRoleUpdateRequest,
+)
 from app.schemas.organization import (
     OrganizationCreateRequest,
     OrganizationResponse,
@@ -28,4 +33,7 @@ __all__ = [
     "OrganizationCreateRequest",
     "OrganizationUpdateRequest",
     "OrganizationResponse",
+    "MemberAddRequest",
+    "MemberRoleUpdateRequest",
+    "MemberResponse",
 ]

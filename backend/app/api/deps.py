@@ -67,15 +67,31 @@ async def get_current_verified_user(
 
 async def get_organization_context(
     org_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_verified_user)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> Organization:
-    """Resolve and validate active organization from URL path context /organizations/{org_id}/..."""
+    """Resolve and validate active organization from URL path context /organizations/{org_id}/...
+
+    Enforces uniform non-disclosure for unauthorized tenant access: a caller who is not a
+    member of the organization receives HTTP 404 to prevent tenant existence enumeration.
+    """
     if isinstance(org_id, str):
         try:
             org_id = uuid.UUID(org_id)
         except ValueError:
             raise OrganizationNotFoundError("Organization not found.")
 
+    # 1. Verify caller membership first to prevent tenant enumeration
+    membership = await db.scalar(
+        select(OrganizationMember).where(
+            OrganizationMember.organization_id == org_id,
+            OrganizationMember.user_id == current_user.id,
+        )
+    )
+    if not membership:
+        raise OrganizationNotFoundError("Organization not found.")
+
+    # 2. Verify organization exists and is active
     org = await db.scalar(select(Organization).where(Organization.id == org_id))
     if not org:
         raise OrganizationNotFoundError("Organization not found.")
@@ -99,10 +115,10 @@ async def get_current_org_membership(
         )
     )
     if not membership:
-        raise NotAnOrganizationMemberError("Not a member of this organization.")
+        raise OrganizationNotFoundError("Organization not found.")
 
     if not validate_organization_membership(membership.organization_id, org.id):
-        raise NotAnOrganizationMemberError("Not a member of this organization.")
+        raise OrganizationNotFoundError("Organization not found.")
 
     return membership
 

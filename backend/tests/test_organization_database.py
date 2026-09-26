@@ -315,3 +315,15 @@ async def test_cascade_delete_user(test_db_session: AsyncSession) -> None:
     o2_db = await test_db_session.scalar(select(Organization).where(Organization.id == org2.id))
     assert o1_db is not None
     assert o2_db is not None
+
+
+@pytest.mark.asyncio
+async def test_composite_membership_role_index(test_db_session: AsyncSession) -> None:
+    """Verify that OrganizationMember defines the composite index on (organization_id, role)."""
+    table = OrganizationMember.__table__
+    index_names = {idx.name: [c.name for c in idx.columns] for idx in table.indexes}
+
+    assert "ix_organization_members_organization_id_role" in index_names
+    indexed_columns = index_names["ix_organization_members_organization_id_role"]
+    assert indexed_columns == ["organization_id", "role"]
+

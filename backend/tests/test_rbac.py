@@ -410,7 +410,7 @@ async def test_non_member_access_rejected(
     test_db_session: AsyncSession,
     rbac_client: AsyncClient,
 ):
-    """Verified user who is not a member of the organization is rejected with 403."""
+    """Verified user who is not a member of the organization is rejected with 404 to prevent tenant leakage."""
     user = await _create_test_user(test_db_session)
     org = await _create_test_org(test_db_session)
     await test_db_session.commit()
@@ -422,10 +422,33 @@ async def test_non_member_access_rejected(
         f"/api/v1/organizations/{org.id}/membership",
         headers=headers,
     )
-    assert response.status_code == 403
+    assert response.status_code == 404
     data = response.json()
-    assert data["error"]["code"] == "NOT_AN_ORG_MEMBER"
-    assert data["error"]["message"] == "Not a member of this organization."
+    assert data["error"]["code"] == "ORGANIZATION_NOT_FOUND"
+    assert data["error"]["message"] == "Organization not found."
+
+
+@pytest.mark.asyncio
+async def test_inactive_organization_non_member_access_rejected(
+    test_db_session: AsyncSession,
+    rbac_client: AsyncClient,
+):
+    """A non-member accessing an inactive organization receives 404, preventing inactive tenant discovery."""
+    user = await _create_test_user(test_db_session)
+    inactive_org = await _create_test_org(test_db_session, is_active=False)
+    await test_db_session.commit()
+
+    token = create_access_token(subject=str(user.id))
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = await rbac_client.get(
+        f"/api/v1/organizations/{inactive_org.id}/membership",
+        headers=headers,
+    )
+    assert response.status_code == 404
+    data = response.json()
+    assert data["error"]["code"] == "ORGANIZATION_NOT_FOUND"
+    assert data["error"]["message"] == "Organization not found."
 
 
 @pytest.mark.asyncio
@@ -625,13 +648,13 @@ async def test_organization_context_isolation(
     )
     assert res_a.status_code == 200
 
-    # Org B: Access denied (Not an organization member)
+    # Org B: Access denied with 404 (non-member receives 404 to prevent tenant enumeration)
     res_b = await rbac_client.get(
         f"/api/v1/organizations/{org_b.id}/org-read",
         headers=headers,
     )
-    assert res_b.status_code == 403
-    assert res_b.json()["error"]["code"] == "NOT_AN_ORG_MEMBER"
+    assert res_b.status_code == 404
+    assert res_b.json()["error"]["code"] == "ORGANIZATION_NOT_FOUND"
 
     # User added to Org B as VIEWER
     await _add_member(test_db_session, org_b, user, OrgRole.VIEWER)

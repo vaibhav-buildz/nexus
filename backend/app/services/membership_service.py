@@ -32,6 +32,22 @@ from app.schemas.member import MemberAddRequest, MemberResponse
 logger = logging.getLogger("nexus.membership")
 
 
+def _is_postgresql_session(db: AsyncSession) -> bool:
+    """Safely check if the session is bound to a PostgreSQL engine/connection."""
+    bind = getattr(db, "bind", None)
+    if bind is None:
+        try:
+            bind = db.get_bind()
+        except Exception:
+            bind = None
+
+    if bind is not None:
+        dialect = getattr(bind, "dialect", None)
+        if dialect is not None and getattr(dialect, "name", None) == "postgresql":
+            return True
+    return False
+
+
 class MembershipService:
     """Core domain service for membership management and governance enforcement."""
 
@@ -224,7 +240,7 @@ class MembershipService:
             OrganizationMember.organization_id == org_id,
             OrganizationMember.role == OrgRole.OWNER.value,
         )
-        if db.bind and db.bind.dialect.name == "postgresql":
+        if _is_postgresql_session(db):
             owners_query = owners_query.with_for_update()
 
         owners = (await db.scalars(owners_query)).all()
@@ -294,7 +310,7 @@ class MembershipService:
             OrganizationMember.organization_id == org_id,
             OrganizationMember.role == OrgRole.OWNER.value,
         )
-        if db.bind and db.bind.dialect.name == "postgresql":
+        if _is_postgresql_session(db):
             owners_query = owners_query.with_for_update()
 
         owners = (await db.scalars(owners_query)).all()

@@ -688,3 +688,34 @@ async def test_member_endpoints_unauthenticated(
     res_del = await client.delete(f"/api/v1/organizations/{dummy_org}/members/{dummy_user}")
     assert res_del.status_code == 401
 
+
+@pytest.mark.asyncio
+async def test_bind_resolution_and_dialect_detection(
+    test_db_session: AsyncSession,
+) -> None:
+    """Verify that _is_postgresql_session reliably detects dialect via getattr or get_bind."""
+    from unittest.mock import MagicMock
+    from app.services.membership_service import _is_postgresql_session
+
+    # 1. Real SQLite test session returns False without error
+    assert _is_postgresql_session(test_db_session) is False
+
+    # 2. Mock session with bind.dialect.name == "postgresql" returns True
+    pg_mock_session = MagicMock()
+    pg_mock_session.bind.dialect.name = "postgresql"
+    assert _is_postgresql_session(pg_mock_session) is True
+
+    # 3. Mock session with bind=None but get_bind() returning postgresql engine returns True
+    fallback_session = MagicMock()
+    fallback_session.bind = None
+    fallback_bind = MagicMock()
+    fallback_bind.dialect.name = "postgresql"
+    fallback_session.get_bind.return_value = fallback_bind
+    assert _is_postgresql_session(fallback_session) is True
+
+    # 4. Mock session with bind=None and get_bind() raising exception returns False safely
+    broken_session = MagicMock()
+    broken_session.bind = None
+    broken_session.get_bind.side_effect = RuntimeError("No bind available")
+    assert _is_postgresql_session(broken_session) is False
+

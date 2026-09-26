@@ -487,3 +487,166 @@ async def test_owner_vs_admin_behavior(
     )
     assert owner_delete.status_code == 200
     assert owner_delete.json()["is_active"] is False
+
+
+@pytest.mark.asyncio
+async def test_create_organization_unverified_user_rejected(
+    client: AsyncClient,
+    test_db_session: AsyncSession,
+) -> None:
+    """Verify that an unverified user cannot create an organization (requires verified user)."""
+    unverified = await _create_user(test_db_session, is_verified=False)
+    await test_db_session.commit()
+
+    response = await client.post(
+        "/api/v1/organizations",
+        json={"name": "Unverified Org", "slug": "unverified-org"},
+        headers=_auth_header(unverified),
+    )
+    assert response.status_code == 403
+    data = response.json()
+    assert data["error"]["code"] == "USER_INACTIVE"
+    assert "verified" in data["error"]["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_organization_unauthenticated_rejected(
+    client: AsyncClient,
+) -> None:
+    """Verify that unauthenticated requests to organization endpoints return 401."""
+    # POST /organizations
+    res_post = await client.post(
+        "/api/v1/organizations",
+        json={"name": "No Auth", "slug": "no-auth"},
+    )
+    assert res_post.status_code == 401
+
+    # GET /organizations
+    res_list = await client.get("/api/v1/organizations")
+    assert res_list.status_code == 401
+
+    # GET /organizations/{id}
+    dummy_id = uuid.uuid4()
+    res_get = await client.get(f"/api/v1/organizations/{dummy_id}")
+    assert res_get.status_code == 401
+
+    # PATCH /organizations/{id}
+    res_patch = await client.patch(f"/api/v1/organizations/{dummy_id}", json={"name": "New"})
+    assert res_patch.status_code == 401
+
+    # DELETE /organizations/{id}
+    res_delete = await client.delete(f"/api/v1/organizations/{dummy_id}")
+    assert res_delete.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_organization_validation_errors(
+    client: AsyncClient,
+    test_db_session: AsyncSession,
+) -> None:
+    """Verify that malformed requests return 422 with validation errors."""
+    user = await _create_user(test_db_session)
+    await test_db_session.commit()
+
+    # Invalid slug with spaces and special characters
+    res_slug = await client.post(
+        "/api/v1/organizations",
+        json={"name": "Valid Name", "slug": "invalid slug with spaces"},
+        headers=_auth_header(user),
+    )
+    assert res_slug.status_code == 422
+
+    # Whitespace-only name
+    res_name = await client.post(
+        "/api/v1/organizations",
+        json={"name": "   ", "slug": "valid-slug"},
+        headers=_auth_header(user),
+    )
+    assert res_name.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_patch_inactive_organization_forbidden(
+    client: AsyncClient,
+    test_db_session: AsyncSession,
+) -> None:
+    """Verify that PATCH on an inactive organization returns 403 ORGANIZATION_INACTIVE."""
+    owner = await _create_user(test_db_session)
+    await test_db_session.commit()
+
+    create_res = await client.post(
+        "/api/v1/organizations",
+        json={"name": "Org To Deactivate", "slug": "org-to-deactivate"},
+        headers=_auth_header(owner),
+    )
+    org_id = uuid.UUID(create_res.json()["id"])
+
+    # Deactivate the organization
+    del_res = await client.delete(
+        f"/api/v1/organizations/{org_id}",
+        headers=_auth_header(owner),
+    )
+    assert del_res.status_code == 200
+
+    # Attempt PATCH on deactivated organization
+    patch_res = await client.patch(
+        f"/api/v1/organizations/{org_id}",
+        json={"name": "Renamed Deactivated Org"},
+        headers=_auth_header(owner),
+    )
+    assert patch_res.status_code == 403
+    assert patch_res.json()["error"]["code"] == "ORGANIZATION_INACTIVE"
+
+
+@pytest.mark.asyncio
+async def test_delete_organization_non_member_access(
+    client: AsyncClient,
+    test_db_session: AsyncSession,
+) -> None:
+    """Verify that a non-member attempting DELETE receives 404 to prevent tenant enumeration."""
+    owner = await _create_user(test_db_session)
+    outsider = await _create_user(test_db_session)
+    await test_db_session.commit()
+
+    create_res = await client.post(
+        "/api/v1/organizations",
+        json={"name": "Delete Target Org", "slug": "delete-target-org"},
+        headers=_auth_header(owner),
+    )
+    org_id = uuid.UUID(create_res.json()["id"])
+
+    # Outsider attempts DELETE
+    del_res = await client.delete(
+        f"/api/v1/organizations/{org_id}",
+        headers=_auth_header(outsider),
+    )
+    assert del_res.status_code == 404
+    assert del_res.json()["error"]["code"] == "ORGANIZATION_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+async def test_patch_organization_clear_description(
+    client: AsyncClient,
+    test_db_session: AsyncSession,
+) -> None:
+    """Verify that description can be updated or cleared to null via PATCH."""
+    owner = await _create_user(test_db_session)
+    await test_db_session.commit()
+
+    create_res = await client.post(
+        "/api/v1/organizations",
+        json={"name": "Desc Org", "slug": "desc-org", "description": "Has description"},
+        headers=_auth_header(owner),
+    )
+    org_id = uuid.UUID(create_res.json()["id"])
+    assert create_res.json()["description"] == "Has description"
+
+    # Clear description by passing null
+    patch_res = await client.patch(
+        f"/api/v1/organizations/{org_id}",
+        json={"description": None},
+        headers=_auth_header(owner),
+    )
+    assert patch_res.status_code == 200
+    assert patch_res.json()["description"] is None
+

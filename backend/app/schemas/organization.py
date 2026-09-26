@@ -13,6 +13,15 @@ class OrganizationCreateRequest(BaseModel):
     slug: str = Field(min_length=1, max_length=128, description="URL-friendly unique organization slug")
     description: str | None = Field(default=None, description="Optional organization description")
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        """Validate organization name: not empty or whitespace."""
+        cleaned = v.strip()
+        if not cleaned:
+            raise ValueError("Organization name cannot be empty or whitespace.")
+        return cleaned
+
     @field_validator("slug")
     @classmethod
     def validate_slug(cls, v: str) -> str:
@@ -30,6 +39,17 @@ class OrganizationUpdateRequest(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=128, description="Updated organization name")
     description: str | None = Field(default=None, description="Updated organization description")
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str | None) -> str | None:
+        """Validate organization name: not empty or whitespace when provided."""
+        if v is not None:
+            cleaned = v.strip()
+            if not cleaned:
+                raise ValueError("Organization name cannot be empty or whitespace.")
+            return cleaned
+        return v
 
 
 class OrganizationResponse(BaseModel):

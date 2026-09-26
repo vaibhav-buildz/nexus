@@ -153,7 +153,7 @@ class OrganizationService:
         # Update only permitted fields
         if payload.name is not None:
             org.name = payload.name.strip()
-        if payload.description is not None:
+        if "description" in payload.model_fields_set:
             org.description = payload.description.strip() if payload.description else None
 
         await db.commit()

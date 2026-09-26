@@ -110,9 +110,20 @@ class MembershipService:
         if not org.is_active:
             raise InactiveOrganizationError("Organization is inactive.")
 
-        # 3. Find target user by user_id or email
+        # 3. Check caller permission to invite members
+        if not has_permission(caller_membership.role, Permission.MEMBER_INVITE):
+            raise InsufficientPermissionsError("Insufficient permissions.")
+
+        # 4. Find target user by user_id or email (or both)
         target_user = None
-        if payload.user_id:
+        if payload.user_id and payload.email:
+            target_user = await db.scalar(
+                select(User).where(
+                    User.id == payload.user_id,
+                    User.email == payload.email.lower().strip(),
+                )
+            )
+        elif payload.user_id:
             target_user = await db.scalar(select(User).where(User.id == payload.user_id))
         elif payload.email:
             target_user = await db.scalar(
@@ -125,7 +136,7 @@ class MembershipService:
         if not target_user.is_active:
             raise InactiveUserError("User account is inactive.")
 
-        # 4. Check for duplicate membership
+        # 5. Check for duplicate membership
         existing_membership = await db.scalar(
             select(OrganizationMember).where(
                 OrganizationMember.organization_id == org_id,

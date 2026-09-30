@@ -40,6 +40,24 @@ class Permission(str, Enum):
     RESOURCE_UPDATE = "resource:update"
     RESOURCE_DELETE = "resource:delete"
 
+    # Projects
+    PROJECT_READ = "project:read"
+    PROJECT_CREATE = "project:create"
+    PROJECT_UPDATE = "project:update"
+    PROJECT_DELETE = "project:delete"
+
+    # Environments
+    ENVIRONMENT_READ = "environment:read"
+    ENVIRONMENT_CREATE = "environment:create"
+    ENVIRONMENT_UPDATE = "environment:update"
+    ENVIRONMENT_DELETE = "environment:delete"
+
+    # Services
+    SERVICE_READ = "service:read"
+    SERVICE_CREATE = "service:create"
+    SERVICE_UPDATE = "service:update"
+    SERVICE_DELETE = "service:delete"
+
 
 # Explicit Role to Permission mapping
 ROLE_PERMISSIONS: dict[OrgRole, set[Permission]] = {
@@ -47,6 +65,9 @@ ROLE_PERMISSIONS: dict[OrgRole, set[Permission]] = {
         Permission.ORG_READ,
         Permission.MEMBER_READ,
         Permission.RESOURCE_READ,
+        Permission.PROJECT_READ,
+        Permission.ENVIRONMENT_READ,
+        Permission.SERVICE_READ,
     },
     OrgRole.MEMBER: {
         Permission.ORG_READ,
@@ -54,6 +75,15 @@ ROLE_PERMISSIONS: dict[OrgRole, set[Permission]] = {
         Permission.RESOURCE_READ,
         Permission.RESOURCE_CREATE,
         Permission.RESOURCE_UPDATE,
+        Permission.PROJECT_READ,
+        Permission.PROJECT_CREATE,
+        Permission.PROJECT_UPDATE,
+        Permission.ENVIRONMENT_READ,
+        Permission.ENVIRONMENT_CREATE,
+        Permission.ENVIRONMENT_UPDATE,
+        Permission.SERVICE_READ,
+        Permission.SERVICE_CREATE,
+        Permission.SERVICE_UPDATE,
     },
     OrgRole.ADMIN: {
         Permission.ORG_READ,
@@ -66,6 +96,18 @@ ROLE_PERMISSIONS: dict[OrgRole, set[Permission]] = {
         Permission.MEMBER_ROLE_UPDATE,
         Permission.MEMBER_REMOVE,
         Permission.RESOURCE_DELETE,
+        Permission.PROJECT_READ,
+        Permission.PROJECT_CREATE,
+        Permission.PROJECT_UPDATE,
+        Permission.PROJECT_DELETE,
+        Permission.ENVIRONMENT_READ,
+        Permission.ENVIRONMENT_CREATE,
+        Permission.ENVIRONMENT_UPDATE,
+        Permission.ENVIRONMENT_DELETE,
+        Permission.SERVICE_READ,
+        Permission.SERVICE_CREATE,
+        Permission.SERVICE_UPDATE,
+        Permission.SERVICE_DELETE,
     },
     OrgRole.OWNER: {
         Permission.ORG_READ,
@@ -79,6 +121,18 @@ ROLE_PERMISSIONS: dict[OrgRole, set[Permission]] = {
         Permission.MEMBER_REMOVE,
         Permission.RESOURCE_DELETE,
         Permission.ORG_DELETE,
+        Permission.PROJECT_READ,
+        Permission.PROJECT_CREATE,
+        Permission.PROJECT_UPDATE,
+        Permission.PROJECT_DELETE,
+        Permission.ENVIRONMENT_READ,
+        Permission.ENVIRONMENT_CREATE,
+        Permission.ENVIRONMENT_UPDATE,
+        Permission.ENVIRONMENT_DELETE,
+        Permission.SERVICE_READ,
+        Permission.SERVICE_CREATE,
+        Permission.SERVICE_UPDATE,
+        Permission.SERVICE_DELETE,
     },
 }
 

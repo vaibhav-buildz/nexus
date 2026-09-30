@@ -175,11 +175,14 @@ async def rbac_client(
 
 
 def test_permission_matrix_viewer():
-    """VIEWER permissions: org:read, member:read, resource:read."""
+    """VIEWER permissions: org:read, member:read, resource:read, project:read, environment:read, service:read."""
     allowed = {
         Permission.ORG_READ,
         Permission.MEMBER_READ,
         Permission.RESOURCE_READ,
+        Permission.PROJECT_READ,
+        Permission.ENVIRONMENT_READ,
+        Permission.SERVICE_READ,
     }
     for perm in Permission:
         expected = perm in allowed
@@ -188,13 +191,22 @@ def test_permission_matrix_viewer():
 
 
 def test_permission_matrix_member():
-    """MEMBER permissions: VIEWER + resource:create, resource:update."""
+    """MEMBER permissions: VIEWER + resource/project/environment/service create & update."""
     allowed = {
         Permission.ORG_READ,
         Permission.MEMBER_READ,
         Permission.RESOURCE_READ,
         Permission.RESOURCE_CREATE,
         Permission.RESOURCE_UPDATE,
+        Permission.PROJECT_READ,
+        Permission.PROJECT_CREATE,
+        Permission.PROJECT_UPDATE,
+        Permission.ENVIRONMENT_READ,
+        Permission.ENVIRONMENT_CREATE,
+        Permission.ENVIRONMENT_UPDATE,
+        Permission.SERVICE_READ,
+        Permission.SERVICE_CREATE,
+        Permission.SERVICE_UPDATE,
     }
     for perm in Permission:
         expected = perm in allowed
@@ -202,7 +214,7 @@ def test_permission_matrix_member():
 
 
 def test_permission_matrix_admin():
-    """ADMIN permissions: all MEMBER + org:update, member:invite, member:role_update, member:remove, resource:delete."""
+    """ADMIN permissions: all MEMBER + org:update, member:invite, member:role_update, member:remove, resource/project/environment/service delete."""
     allowed = {
         Permission.ORG_READ,
         Permission.MEMBER_READ,
@@ -214,6 +226,18 @@ def test_permission_matrix_admin():
         Permission.MEMBER_ROLE_UPDATE,
         Permission.MEMBER_REMOVE,
         Permission.RESOURCE_DELETE,
+        Permission.PROJECT_READ,
+        Permission.PROJECT_CREATE,
+        Permission.PROJECT_UPDATE,
+        Permission.PROJECT_DELETE,
+        Permission.ENVIRONMENT_READ,
+        Permission.ENVIRONMENT_CREATE,
+        Permission.ENVIRONMENT_UPDATE,
+        Permission.ENVIRONMENT_DELETE,
+        Permission.SERVICE_READ,
+        Permission.SERVICE_CREATE,
+        Permission.SERVICE_UPDATE,
+        Permission.SERVICE_DELETE,
     }
     for perm in Permission:
         expected = perm in allowed

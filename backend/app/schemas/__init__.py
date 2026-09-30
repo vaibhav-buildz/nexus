@@ -20,6 +20,11 @@ from app.schemas.organization import (
     OrganizationResponse,
     OrganizationUpdateRequest,
 )
+from app.schemas.project import (
+    CreateProjectRequest,
+    ProjectResponse,
+    UpdateProjectRequest,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -36,4 +41,7 @@ __all__ = [
     "MemberAddRequest",
     "MemberRoleUpdateRequest",
     "MemberResponse",
+    "CreateProjectRequest",
+    "UpdateProjectRequest",
+    "ProjectResponse",
 ]

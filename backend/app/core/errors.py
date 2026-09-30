@@ -223,6 +223,46 @@ class GovernanceRuleViolationError(AppException):
         )
 
 
+class ProjectNotFoundError(AppException):
+    """Raised when a project is not found within the organization context."""
+
+    def __init__(self, message: str = "Project not found.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="PROJECT_NOT_FOUND",
+            details=details,
+        )
+
+
+class ProjectAlreadyExistsError(AppException):
+    """Raised when a project with the same slug already exists in the organization."""
+
+    def __init__(
+        self,
+        message: str = "A project with this slug already exists in this organization.",
+        details: Any = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_409_CONFLICT,
+            code="PROJECT_ALREADY_EXISTS",
+            details=details,
+        )
+
+
+class InactiveProjectError(AppException):
+    """Raised when an update operation is attempted on an inactive project."""
+
+    def __init__(self, message: str = "Cannot update an inactive project.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="PROJECT_INACTIVE",
+            details=details,
+        )
+
+
 def create_error_response(status_code: int, code: str, message: str, details: Any = None) -> JSONResponse:
     """Helper to return consistent JSON error envelopes."""
     payload = {

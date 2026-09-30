@@ -10,6 +10,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.organization_member import OrganizationMember
+    from app.models.project import Project
 
 
 class Organization(Base):
@@ -58,6 +59,12 @@ class Organization(Base):
         "OrganizationMember",
         back_populates="organization",
         cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    projects: Mapped[list["Project"]] = relationship(
+        "Project",
+        back_populates="organization",
+        foreign_keys="[Project.organization_id]",
         lazy="selectin",
     )
 

@@ -30,6 +30,11 @@ from app.schemas.project import (
     ProjectResponse,
     UpdateProjectRequest,
 )
+from app.schemas.service import (
+    CreateServiceRequest,
+    ServiceResponse,
+    UpdateServiceRequest,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -52,4 +57,7 @@ __all__ = [
     "CreateEnvironmentRequest",
     "UpdateEnvironmentRequest",
     "EnvironmentResponse",
+    "CreateServiceRequest",
+    "UpdateServiceRequest",
+    "ServiceResponse",
 ]

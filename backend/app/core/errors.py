@@ -303,6 +303,46 @@ class InactiveEnvironmentError(AppException):
         )
 
 
+class ServiceNotFoundError(AppException):
+    """Raised when a service is not found within the organization, project, and environment context."""
+
+    def __init__(self, message: str = "Service not found.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="SERVICE_NOT_FOUND",
+            details=details,
+        )
+
+
+class ServiceAlreadyExistsError(AppException):
+    """Raised when a service with the same slug already exists in the environment."""
+
+    def __init__(
+        self,
+        message: str = "A service with this slug already exists in this environment.",
+        details: Any = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_409_CONFLICT,
+            code="SERVICE_ALREADY_EXISTS",
+            details=details,
+        )
+
+
+class InactiveServiceError(AppException):
+    """Raised when an update operation is attempted on an inactive service."""
+
+    def __init__(self, message: str = "Cannot update an inactive service.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="SERVICE_INACTIVE",
+            details=details,
+        )
+
+
 def create_error_response(status_code: int, code: str, message: str, details: Any = None) -> JSONResponse:
     """Helper to return consistent JSON error envelopes."""
     payload = {

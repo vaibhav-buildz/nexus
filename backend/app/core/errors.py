@@ -263,6 +263,46 @@ class InactiveProjectError(AppException):
         )
 
 
+class EnvironmentNotFoundError(AppException):
+    """Raised when an environment is not found within the organization and project context."""
+
+    def __init__(self, message: str = "Environment not found.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="ENVIRONMENT_NOT_FOUND",
+            details=details,
+        )
+
+
+class EnvironmentAlreadyExistsError(AppException):
+    """Raised when an environment with the same slug already exists in the project."""
+
+    def __init__(
+        self,
+        message: str = "An environment with this slug already exists in this project.",
+        details: Any = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_409_CONFLICT,
+            code="ENVIRONMENT_ALREADY_EXISTS",
+            details=details,
+        )
+
+
+class InactiveEnvironmentError(AppException):
+    """Raised when an update operation is attempted on an inactive environment."""
+
+    def __init__(self, message: str = "Cannot update an inactive environment.", details: Any = None) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="ENVIRONMENT_INACTIVE",
+            details=details,
+        )
+
+
 def create_error_response(status_code: int, code: str, message: str, details: Any = None) -> JSONResponse:
     """Helper to return consistent JSON error envelopes."""
     payload = {

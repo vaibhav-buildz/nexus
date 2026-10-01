@@ -20,6 +20,11 @@ from app.schemas.organization import (
     OrganizationResponse,
     OrganizationUpdateRequest,
 )
+from app.schemas.environment import (
+    CreateEnvironmentRequest,
+    EnvironmentResponse,
+    UpdateEnvironmentRequest,
+)
 from app.schemas.project import (
     CreateProjectRequest,
     ProjectResponse,
@@ -44,4 +49,7 @@ __all__ = [
     "CreateProjectRequest",
     "UpdateProjectRequest",
     "ProjectResponse",
+    "CreateEnvironmentRequest",
+    "UpdateEnvironmentRequest",
+    "EnvironmentResponse",
 ]
